@@ -41,15 +41,7 @@ const videoLessons = [
     duration: '14:10',
     watched: false,
   },
-  {
-    id: 5,
-    title: 'C# OOP: Classes and Objects',
-    description: 'Understanding classes and objects in C#',
-    language: 'C#',
-    youtubeId: 'dQw4w9WgXcQ',
-    duration: '16:00',
-    watched: true,
-  },
+
 ];
 
 export default function VideosPage() {
