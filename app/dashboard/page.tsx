@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, Video, FileText, TrendingUp, Flame, Clock } from 'lucide-react';
-import { apiClient } from '@/lib/api/client';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -79,27 +79,27 @@ export default function DashboardPage() {
             <CardDescription className="text-slate-400">Continue where you left off</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer">
+            <Link href="/dashboard/courses" className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer">
               <div className="flex items-center gap-3">
                 <BookOpen className="h-5 w-5 text-primary" />
                 <span className="text-white">View Course Materials</span>
               </div>
               <TrendingUp className="h-4 w-4 text-slate-400" />
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer">
+            </Link>
+            <Link href="/dashboard/videos" className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer">
               <div className="flex items-center gap-3">
                 <Video className="h-5 w-5 text-primary" />
                 <span className="text-white">Watch Videos</span>
               </div>
               <TrendingUp className="h-4 w-4 text-slate-400" />
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer">
+            </Link>
+            <Link href="/dashboard/quizzes" className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer">
               <div className="flex items-center gap-3">
                 <FileText className="h-5 w-5 text-primary" />
                 <span className="text-white">Take Quizzes</span>
               </div>
               <TrendingUp className="h-4 w-4 text-slate-400" />
-            </div>
+            </Link>
           </CardContent>
         </Card>
 

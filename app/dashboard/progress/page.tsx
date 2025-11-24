@@ -1,23 +1,71 @@
 'use client';
 
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Flame, BookOpen, Video, FileText, Target } from 'lucide-react';
+import { apiClient } from '@/lib/api/client';
 
-const progressData = {
-  overallProgress: 35,
-  currentStreak: 7,
-  coursesCompleted: 1,
-  videosWatched: 5,
-  quizzesCompleted: 2,
-  languages: [
-    { name: 'Java', progress: 45, completed: 2, total: 4 },
-    { name: 'Python', progress: 30, completed: 1, total: 4 },
-    { name: 'PHP', progress: 20, completed: 0, total: 4 },
-    { name: 'C#', progress: 15, completed: 0, total: 4 },
-  ],
-};
+interface ProgressItem {
+  id: string;
+  userId: string;
+  lessonId?: string | null;
+  courseMaterialId?: string | null;
+  videoId?: string | null;
+  progressType?: string;
+  isCompleted?: boolean;
+  progressPercentage?: number;
+  createdAt?: string;
+}
 
 export default function ProgressPage() {
+  const { data, isLoading, error } = useQuery<ProgressItem[]>({
+    queryKey: ['myProgress'],
+    queryFn: async () => {
+      const resp = await apiClient.get('/api/progress/me');
+      return resp.data || [];
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+
+  const stats = useMemo(() => {
+    const items = data || [];
+    const total = items.length;
+    const videosWatched = items.filter((i) => i.progressType === 'video_watched' && i.isCompleted).length;
+    const quizzesCompleted = items.filter((i) => i.progressType === 'quiz_completed' && i.isCompleted).length;
+    const avgProgress = total === 0 ? 0 : Math.round((items.reduce((s, i) => s + (i.progressPercentage || 0), 0) / total) || 0);
+
+    // Minimal language breakdown: group by lessonId's presence as a heuristic (this will vary by backend)
+    const languageMap: Record<string, { name: string; progress: number; completed: number; total: number }> = {};
+    // We don't have language info in the progress response; create a fallback grouping by lessonId
+    items.forEach((it) => {
+      const key = it.lessonId || 'unknown';
+      if (!languageMap[key]) {
+        languageMap[key] = { name: key === 'unknown' ? 'General' : `Lesson ${key.slice(0, 6)}`, progress: 0, completed: 0, total: 0 };
+      }
+      languageMap[key].progress += it.progressPercentage || 0;
+      languageMap[key].total += 100;
+      if (it.isCompleted) languageMap[key].completed += 1;
+    });
+
+    const languages = Object.values(languageMap).map((l) => ({
+      name: l.name,
+      progress: l.total === 0 ? 0 : Math.round(l.progress / (l.total / 100)),
+      completed: l.completed,
+      total: Math.max(1, Math.round(l.total / 100)),
+    }));
+
+    return {
+      overallProgress: avgProgress,
+      currentStreak: 0,
+      coursesCompleted: 0,
+      videosWatched,
+      quizzesCompleted,
+      languages,
+    };
+  }, [data]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -32,11 +80,11 @@ export default function ProgressPage() {
             <Target className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{progressData.overallProgress}%</div>
+            <div className="text-2xl font-bold text-white">{isLoading ? '—' : `${stats.overallProgress}%`}</div>
             <div className="mt-2 h-2 bg-slate-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary transition-all"
-                style={{ width: `${progressData.overallProgress}%` }}
+                style={{ width: `${stats.overallProgress}%` }}
               />
             </div>
           </CardContent>
@@ -48,7 +96,7 @@ export default function ProgressPage() {
             <Flame className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{progressData.currentStreak} days</div>
+            <div className="text-2xl font-bold text-white">{isLoading ? '—' : `${stats.currentStreak} days`}</div>
             <p className="text-xs text-slate-400 mt-1">Keep it up!</p>
           </CardContent>
         </Card>
@@ -59,7 +107,7 @@ export default function ProgressPage() {
             <Video className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{progressData.videosWatched}</div>
+            <div className="text-2xl font-bold text-white">{isLoading ? '—' : stats.videosWatched}</div>
             <p className="text-xs text-slate-400 mt-1">Total watched</p>
           </CardContent>
         </Card>
@@ -70,7 +118,7 @@ export default function ProgressPage() {
             <FileText className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{progressData.quizzesCompleted}</div>
+            <div className="text-2xl font-bold text-white">{isLoading ? '—' : stats.quizzesCompleted}</div>
             <p className="text-xs text-slate-400 mt-1">Total completed</p>
           </CardContent>
         </Card>
@@ -78,30 +126,34 @@ export default function ProgressPage() {
 
       <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl">
         <CardHeader>
-          <CardTitle className="text-white">Progress by Language</CardTitle>
-          <CardDescription className="text-slate-400">Track your progress for each programming language</CardDescription>
+          <CardTitle className="text-white">Progress by Lesson</CardTitle>
+          <CardDescription className="text-slate-400">Track your progress grouped by lesson</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {progressData.languages.map((lang) => (
-            <div key={lang.name} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-primary" />
-                  <span className="text-white font-medium">{lang.name}</span>
+          {isLoading ? (
+            <div className="text-slate-400">Loading...</div>
+          ) : (
+            stats.languages.map((lang) => (
+              <div key={lang.name} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-primary" />
+                    <span className="text-white font-medium">{lang.name}</span>
+                  </div>
+                  <span className="text-sm text-slate-400">
+                    {lang.completed}/{lang.total} completed
+                  </span>
                 </div>
-                <span className="text-sm text-slate-400">
-                  {lang.completed}/{lang.total} courses
-                </span>
+                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${lang.progress}%` }}
+                  />
+                </div>
+                <div className="text-xs text-slate-400">{lang.progress}% complete</div>
               </div>
-              <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all"
-                  style={{ width: `${lang.progress}%` }}
-                />
-              </div>
-              <div className="text-xs text-slate-400">{lang.progress}% complete</div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
     </div>
