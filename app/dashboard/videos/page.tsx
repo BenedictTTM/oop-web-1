@@ -5,17 +5,18 @@ import { Video, Play, CheckCircle2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api/client';
+import { useRouter } from 'next/navigation';
 
 
 export default function VideosPage() {
-
-    const [videos, setVideos] = useState<any[]>([]);
+  const router = useRouter();
+  const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const response = await apiClient.get('api/admin/videos');
+        const response = await apiClient.get('api/videos');
         setVideos(response.data);
       } catch (error) {
         console.error('Failed to fetch videos:', error);
@@ -40,18 +41,23 @@ export default function VideosPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {videos.map((video) => (
-          <Card key={video.id} className="border-slate-800 bg-slate-900/80 backdrop-blur-xl">
+          <Card
+            key={video.id}
+            className="border-slate-800 bg-slate-900/80 backdrop-blur-xl cursor-pointer transition-all hover:border-primary/50"
+            onClick={() => router.push(`/dashboard/videos/${video.id}`)}
+          >
             <div className="relative aspect-video bg-slate-800 rounded-t-lg overflow-hidden">
               <img
                 src={`https://img.youtube.com/vi/${video.youtubeVideoId}/maxresdefault.jpg`}
                 alt={video.title}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+              <div
+                className="absolute inset-0 flex items-center justify-center bg-black/40 transition-all hover:bg-black/60"
+              >
                 <Button
                   size="lg"
-                  className="bg-primary hover:bg-primary/90 rounded-full"
-                  onClick={() => window.open(`https://www.youtube.com/watch?v=${video.youtubeVideoId}`, '_blank')}
+                  className="bg-primary hover:bg-primary/90 rounded-full pointer-events-none"
                 >
                   <Play className="h-6 w-6" />
                 </Button>
@@ -87,4 +93,3 @@ export default function VideosPage() {
     </div>
   );
 }
-
