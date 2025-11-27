@@ -36,9 +36,7 @@ export default function ProgressPage() {
     const quizzesCompleted = items.filter((i) => i.progressType === 'quiz_completed' && i.isCompleted).length;
     const avgProgress = total === 0 ? 0 : Math.round((items.reduce((s, i) => s + (i.progressPercentage || 0), 0) / total) || 0);
 
-    // Minimal language breakdown: group by lessonId's presence as a heuristic (this will vary by backend)
     const languageMap: Record<string, { name: string; progress: number; completed: number; total: number }> = {};
-    // We don't have language info in the progress response; create a fallback grouping by lessonId
     items.forEach((it) => {
       const key = it.lessonId || 'unknown';
       if (!languageMap[key]) {
@@ -56,9 +54,47 @@ export default function ProgressPage() {
       total: Math.max(1, Math.round(l.total / 100)),
     }));
 
+    const currentStreak = (() => {
+      if (items.length === 0) return 0;
+
+      // Get unique dates (YYYY-MM-DD) from progress items
+      const dates = Array.from(new Set(items.map(item => {
+        const date = item.createdAt ? new Date(item.createdAt) : new Date();
+        return date.toISOString().split('T')[0];
+      }))).sort((a, b) => b.localeCompare(a)); // Sort descending
+
+      if (dates.length === 0) return 0;
+
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+      // Streak is broken if the most recent activity wasn't today or yesterday
+      if (dates[0] !== today && dates[0] !== yesterday) {
+        return 0;
+      }
+
+      let streak = 1;
+      let currentDate = new Date(dates[0]);
+
+      for (let i = 1; i < dates.length; i++) {
+        const prevDate = new Date(dates[i]);
+        const diffTime = Math.abs(currentDate.getTime() - prevDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          streak++;
+          currentDate = prevDate;
+        } else {
+          break;
+        }
+      }
+
+      return streak;
+    })();
+
     return {
       overallProgress: avgProgress,
-      currentStreak: 0,
+      currentStreak,
       coursesCompleted: 0,
       videosWatched,
       quizzesCompleted,

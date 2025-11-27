@@ -11,6 +11,7 @@ import { BookOpen, Play, ExternalLink, FileText, Video, ArrowLeft, Lock, AlertCi
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { logActivity, ActivityType } from '@/lib/activity-logger';
 
 declare global {
   interface Window {
@@ -55,7 +56,7 @@ function VideoItem({ video, onWatch }: VideoItemProps) {
   return (
     <div className="group">
       {!isExpanded ? (
-        <div 
+        <div
           className="relative aspect-video bg-slate-800 rounded-lg overflow-hidden cursor-pointer border border-slate-700 hover:border-primary/50 transition-all"
           onClick={handleExpand}
         >
@@ -182,6 +183,21 @@ export default function LessonDetailPage() {
     queryFn: async () => {
       try {
         const response = await apiClient.get(`/api/lessons/${lessonId}`);
+
+        // Log material viewed activity
+        if (response.data) {
+          logActivity({
+            activityType: ActivityType.MATERIAL_VIEWED,
+            action: 'Viewed lesson materials',
+            title: response.data.title,
+            description: `Accessed Session ${response.data.sessionNumber} - ${response.data.title}`,
+            metadata: {
+              lessonId: lessonId,
+              sessionNumber: response.data.sessionNumber
+            }
+          });
+        }
+
         return response.data;
       } catch (error: any) {
         if (error.response?.status === 403) {
@@ -253,17 +269,17 @@ export default function LessonDetailPage() {
       if (!videoId) {
         throw new Error('Video ID is required');
       }
-      
+
       try {
-        const response = await apiClient.post('/api/progress/video/watched', { 
-          videoId, 
-          progressPercentage: 100 
+        const response = await apiClient.post('/api/progress/video/watched', {
+          videoId,
+          progressPercentage: 100
         });
         return { videoId, progress: response.data };
       } catch (error: any) {
         const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
         const status = error.response?.status;
-        
+
         if (status === 400) {
           if (errorMessage.includes('duplicate') || errorMessage.includes('unique constraint') || errorMessage.includes('UQ_') || errorMessage.includes('could not be retrieved')) {
             try {
@@ -273,28 +289,28 @@ export default function LessonDetailPage() {
               return { videoId, progress: { isCompleted: true } };
             }
           }
-          
+
           if (errorMessage.includes('Video not found') || errorMessage.includes('User not found')) {
             throw new Error(errorMessage);
           }
         }
-        
+
         if (status === 401) {
           throw new Error('Unauthorized. Please log in again.');
         }
-        
+
         throw error;
       }
     },
     onSuccess: (result: any, videoId: string) => {
       const progress = result?.progress || result;
-      
-      const progressData = progress && progress.isCompleted !== undefined 
+
+      const progressData = progress && progress.isCompleted !== undefined
         ? { isCompleted: progress.isCompleted, progressPercentage: progress.progressPercentage || 100 }
         : { isCompleted: true, progressPercentage: 100 };
-      
+
       queryClient.setQueryData(['videoProgress', videoId], progressData);
-      
+
       setTimeout(async () => {
         try {
           const freshProgress = await apiClient.get(`/api/progress/video/${videoId}`);
@@ -434,12 +450,12 @@ export default function LessonDetailPage() {
       toast.error('No quiz available for this lesson');
       return;
     }
-    
+
     if (!lessonQuiz.id) {
       toast.error('Quiz ID is missing');
       return;
     }
-    
+
     const quizPath = `/dashboard/quizzes/${lessonQuiz.id}`;
     router.push(quizPath);
   };
@@ -507,7 +523,7 @@ export default function LessonDetailPage() {
             <CardContent>
               {!slideExpanded ? (
                 <div className="space-y-4">
-                  <div 
+                  <div
                     className="relative aspect-[16/10] bg-slate-800 rounded-xl overflow-hidden border-2 border-slate-700 hover:border-primary/50 transition-all cursor-pointer group"
                     onClick={handleSlideView}
                   >
@@ -679,13 +695,12 @@ export default function LessonDetailPage() {
                     return (
                       <div
                         key={attempt.id}
-                        className={`p-4 rounded-lg border-2 ${
-                          isPassed
+                        className={`p-4 rounded-lg border-2 ${isPassed
                             ? 'border-green-500/50 bg-green-500/10'
                             : isFailed
-                            ? 'border-red-500/50 bg-red-500/10'
-                            : 'border-slate-700 bg-slate-800/50'
-                        }`}
+                              ? 'border-red-500/50 bg-red-500/10'
+                              : 'border-slate-700 bg-slate-800/50'
+                          }`}
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">

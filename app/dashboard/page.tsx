@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, Video, FileText, TrendingUp, Flame, Clock } from 'lucide-react';
+import { logActivity, ActivityType } from '@/lib/activity-logger';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -17,6 +18,13 @@ export default function DashboardPage() {
     const pendingEmail = sessionStorage.getItem('pendingEmail');
     if (pendingEmail) {
     }
+
+    // Log dashboard access
+    logActivity({
+      activityType: ActivityType.DASHBOARD_ACCESSED,
+      action: 'Accessed the dashboard',
+      description: 'Student navigated to dashboard page'
+    });
   }, []);
 
   return (

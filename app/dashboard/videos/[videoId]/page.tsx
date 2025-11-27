@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Clock, CheckCircle2 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
+import { logActivity, ActivityType } from '@/lib/activity-logger';
 
 interface Video {
     id: string;
@@ -53,6 +54,18 @@ export default function VideoPlayerPage() {
                 progressPercentage: 100
             });
             setWatched(true);
+
+            // Log video watched activity
+            await logActivity({
+                activityType: ActivityType.VIDEO_WATCHED,
+                action: 'Watched a video',
+                title: video?.title,
+                description: `Completed watching: ${video?.title}`,
+                metadata: {
+                    videoId: videoId,
+                    duration: video?.duration
+                }
+            });
         } catch (error) {
             console.error('Failed to mark video as watched:', error);
         }

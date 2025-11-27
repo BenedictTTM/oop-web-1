@@ -13,6 +13,7 @@ import { apiClient } from '@/lib/api/client';
 import { GraduationCap, LogIn, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUserStatus, getUserEmail } from '@/lib/utils/auth';
+import { logActivity, ActivityType } from '@/lib/activity-logger';
 
 const loginSchema = z.object({
   studentId: z.string().min(1, 'Student ID is required'),
@@ -69,6 +70,13 @@ export default function LoginPage() {
       const userEmail = response.data.user?.email;
 
       if (userStatus === 'approved') {
+        // Log login activity
+        await logActivity({
+          activityType: ActivityType.LOGIN,
+          action: 'Logged in to the system',
+          description: 'User successfully authenticated'
+        });
+
         toast.success('Login successful!', {
           description: 'Welcome back to your learning journey',
         });
