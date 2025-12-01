@@ -11,6 +11,7 @@ import { ArrowLeft, HelpCircle, Lock, AlertCircle, ChevronLeft, ChevronRight, Cl
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Drawer, DrawerContent, DrawerHeader, DrawerBody } from '@/components/ui/drawer';
+import { logActivity, ActivityType } from '@/lib/activity-logger';
 
 enum QuestionType {
   SINGLE_CHOICE = 'single_choice',
@@ -72,7 +73,7 @@ function formatQuestionText(text: string): React.ReactNode {
   const elements: React.ReactNode[] = [];
   let inCodeBlock = false;
   let codeLines: string[] = [];
-  
+
   const flushCodeBlock = () => {
     if (codeLines.length > 0) {
       elements.push(
@@ -83,11 +84,11 @@ function formatQuestionText(text: string): React.ReactNode {
       codeLines = [];
     }
   };
-  
+
   lines.forEach((line, index) => {
     const trimmed = line.trim();
     const isCodeLine = trimmed.match(/^[a-zA-Z].*\{|^\s+\w+.*\{|^\s+\}|^\s+[a-zA-Z].*;|^\s+System\.|^\s+(int|double|void|public|static|return|if|else|for|while)\s|^\s+\w+\s*\(|^\s+\w+\s*=\s*\w+/) || (inCodeBlock && trimmed !== '');
-    
+
     if (isCodeLine) {
       inCodeBlock = true;
       codeLines.push(line);
@@ -107,9 +108,9 @@ function formatQuestionText(text: string): React.ReactNode {
       }
     }
   });
-  
+
   flushCodeBlock();
-  
+
   return <div className="space-y-1">{elements}</div>;
 }
 
@@ -182,18 +183,31 @@ export default function QuizDetailPage() {
       if (data.metadata?.questions) {
         setCurrentQuestionIndex(0);
       }
-      
+
+      // Log quiz started activity
+      logActivity({
+        activityType: ActivityType.QUIZ_STARTED,
+        action: 'Started a quiz',
+        title: quiz?.title,
+        description: `Quiz attempt ${data.attemptNumber} started`,
+        metadata: {
+          quizId: quizId,
+          attemptId: data.id,
+          attemptNumber: data.attemptNumber
+        }
+      });
+
       if (data.status === 'in_progress') {
         if (timerIntervalRef.current) {
           clearInterval(timerIntervalRef.current);
           timerIntervalRef.current = null;
         }
-        
+
         const interval = setInterval(() => {
           timeRemainingRef.current = timeRemainingRef.current - 1;
           const newTime = timeRemainingRef.current;
           setTimeRemaining(newTime);
-          
+
           if (newTime <= 0) {
             clearInterval(interval);
             timerIntervalRef.current = null;
@@ -203,7 +217,7 @@ export default function QuizDetailPage() {
             }
           }
         }, 1000);
-        
+
         timerIntervalRef.current = interval;
       }
     },
@@ -230,6 +244,23 @@ export default function QuizDetailPage() {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
       }
+
+      // Log quiz completed activity
+      logActivity({
+        activityType: ActivityType.QUIZ_COMPLETED,
+        action: 'Completed a quiz',
+        title: quiz?.title,
+        description: `Scored ${data.score}% (${data.passed ? 'Passed' : 'Failed'})`,
+        score: data.score,
+        metadata: {
+          quizId: quizId,
+          attemptId: currentAttempt?.id,
+          passed: data.passed,
+          correctAnswers: data.correctAnswers,
+          totalQuestions: data.totalQuestions
+        }
+      });
+
       if (data.passed) {
         toast.success(`Congratulations! You passed with ${data.score}%`);
         setTimeout(() => {
@@ -294,26 +325,26 @@ export default function QuizDetailPage() {
 
   const handleTimeUp = useCallback(async () => {
     if (!currentAttempt || !quiz || isSubmitting) return;
-    
+
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
-    
+
     toast.error('Time is up! Submitting your quiz with current answers...');
-    
+
     const attemptQuestions = currentAttempt?.metadata?.questions || [];
-    const questions = attemptQuestions.length > 0 
+    const questions = attemptQuestions.length > 0
       ? [...attemptQuestions].sort((a, b) => a.order - b.order)
       : (quiz?.questions ? [...quiz.questions].sort((a, b) => a.order - b.order) : []);
-    
+
     const allAnswers: Record<string, any> = {};
     questions.forEach((question) => {
       if (selectedAnswersRef.current[question.id] !== undefined) {
         allAnswers[question.id] = selectedAnswersRef.current[question.id];
       }
     });
-    
+
     setIsSubmitting(true);
     setTimeRemaining(0);
     submitAttemptMutation.mutate(allAnswers);
@@ -350,17 +381,17 @@ export default function QuizDetailPage() {
       const initialTime = currentAttempt.timeRemaining || 900;
       timeRemainingRef.current = initialTime;
       setTimeRemaining(initialTime);
-      
+
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = null;
       }
-      
+
       const interval = setInterval(() => {
         timeRemainingRef.current = timeRemainingRef.current - 1;
         const newTime = timeRemainingRef.current;
         setTimeRemaining(newTime);
-        
+
         if (newTime <= 0) {
           clearInterval(interval);
           timerIntervalRef.current = null;
@@ -370,9 +401,9 @@ export default function QuizDetailPage() {
           }
         }
       }, 1000);
-      
+
       timerIntervalRef.current = interval;
-      
+
       return () => {
         if (timerIntervalRef.current) {
           clearInterval(timerIntervalRef.current);
@@ -400,7 +431,7 @@ export default function QuizDetailPage() {
 
   useEffect(() => {
     const attemptQuestions = currentAttempt?.metadata?.questions || existingAttempt?.metadata?.questions || [];
-    const questions = attemptQuestions.length > 0 
+    const questions = attemptQuestions.length > 0
       ? [...attemptQuestions].sort((a: any, b: any) => a.order - b.order)
       : (quiz?.questions ? [...quiz.questions].sort((a: any, b: any) => a.order - b.order) : []);
 
@@ -412,12 +443,12 @@ export default function QuizDetailPage() {
             allAnswers[question.id] = selectedAnswersRef.current[question.id];
           }
         });
-        
+
         if (timerIntervalRef.current) {
           clearInterval(timerIntervalRef.current);
           timerIntervalRef.current = null;
         }
-        
+
         submitAttemptMutation.mutate(allAnswers);
       }
     };
@@ -430,7 +461,7 @@ export default function QuizDetailPage() {
             allAnswers[question.id] = selectedAnswersRef.current[question.id];
           }
         });
-        
+
         try {
           const token = localStorage.getItem('token');
           if (token && currentAttempt.id) {
@@ -474,7 +505,7 @@ export default function QuizDetailPage() {
   }, []);
 
   const attemptQuestions = currentAttempt?.metadata?.questions || existingAttempt?.metadata?.questions || [];
-  const sortedQuestions = attemptQuestions.length > 0 
+  const sortedQuestions = attemptQuestions.length > 0
     ? [...attemptQuestions].sort((a, b) => a.order - b.order)
     : (quiz?.questions ? [...quiz.questions].sort((a, b) => a.order - b.order) : []);
   const currentQuestion = sortedQuestions[currentQuestionIndex];
@@ -490,7 +521,7 @@ export default function QuizDetailPage() {
     setSelectedAnswers((prev) => {
       const current = prev[questionId] || [];
       const answers = Array.isArray(current) ? [...current] : [];
-      
+
       if (answers.includes(optionIndex)) {
         return {
           ...prev,
@@ -668,16 +699,14 @@ export default function QuizDetailPage() {
                     <button
                       key={optionIndex}
                       onClick={() => handleAnswerSelect(currentQuestion.id, optionIndex)}
-                      className={`w-full text-left p-3 sm:p-4 rounded-lg border-2 transition-all ${
-                        isSelected
+                      className={`w-full text-left p-3 sm:p-4 rounded-lg border-2 transition-all ${isSelected
                           ? 'border-primary bg-primary/10'
                           : 'border-slate-700 bg-slate-800/50 hover:border-primary/50'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-2 sm:gap-3">
-                        <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                          isSelected ? 'border-primary bg-primary' : 'border-slate-600'
-                        }`}>
+                        <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? 'border-primary bg-primary' : 'border-slate-600'
+                          }`}>
                           {isSelected && (
                             <div className="w-2 h-2 rounded-full bg-white" />
                           )}
@@ -698,16 +727,14 @@ export default function QuizDetailPage() {
                     <button
                       key={optionIndex}
                       onClick={() => handleMultipleChoiceToggle(currentQuestion.id, optionIndex)}
-                      className={`w-full text-left p-3 sm:p-4 rounded-lg border-2 transition-all ${
-                        isSelected
+                      className={`w-full text-left p-3 sm:p-4 rounded-lg border-2 transition-all ${isSelected
                           ? 'border-primary bg-primary/10'
                           : 'border-slate-700 bg-slate-800/50 hover:border-primary/50'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-2 sm:gap-3">
-                        <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                          isSelected ? 'border-primary bg-primary' : 'border-slate-600'
-                        }`}>
+                        <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? 'border-primary bg-primary' : 'border-slate-600'
+                          }`}>
                           {isSelected && (
                             <div className="w-2 h-2 bg-white" />
                           )}
@@ -792,13 +819,12 @@ export default function QuizDetailPage() {
                       setCurrentQuestionIndex(index);
                       setQuestionsDrawerOpen(false);
                     }}
-                    className={`p-4 rounded-lg border-2 transition-all text-center ${
-                      isCurrent
+                    className={`p-4 rounded-lg border-2 transition-all text-center ${isCurrent
                         ? 'border-primary bg-primary text-white'
                         : isAnswered
-                        ? 'border-green-500 bg-green-500/20 text-green-500'
-                        : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-600'
-                    }`}
+                          ? 'border-green-500 bg-green-500/20 text-green-500'
+                          : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-600'
+                      }`}
                   >
                     <div className="text-lg font-bold">{index + 1}</div>
                     <div className="text-xs mt-1 opacity-75">

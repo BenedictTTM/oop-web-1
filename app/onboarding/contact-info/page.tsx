@@ -33,12 +33,14 @@ export default function ContactInfoPage() {
   } = useForm<ContactInfoForm>({
     resolver: zodResolver(contactInfoSchema),
     defaultValues: (() => {
+      if (typeof window === 'undefined') return {};
       const saved = sessionStorage.getItem('onboardingData');
       return saved ? JSON.parse(saved) : {};
     })(),
   });
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const saved = sessionStorage.getItem('onboardingData');
     if (!saved) {
       router.push('/onboarding/basic-info');
@@ -63,7 +65,7 @@ export default function ContactInfoPage() {
           totalSteps={4}
           stepLabels={['Basic Info', 'Contact', 'Password', 'Review']}
         />
-        
+
         <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl shadow-2xl">
           <CardHeader className="space-y-2 pb-6">
             <div className="flex items-center gap-3">
@@ -78,7 +80,7 @@ export default function ContactInfoPage() {
               </div>
             </div>
           </CardHeader>
-          
+
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-2">

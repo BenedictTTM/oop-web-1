@@ -7,7 +7,8 @@ import { apiClient } from '@/lib/api/client';
 import { BookOpen, Play, CheckCircle2, Circle, ArrowRight, Video, Lock, HelpCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
+import { logActivity, ActivityType } from '@/lib/activity-logger';
 
 interface Lesson {
   id: string;
@@ -58,7 +59,7 @@ export default function CoursesPage() {
     queryKey: ['quizAttemptsForLessons', lessonIds],
     queryFn: async () => {
       if (lessonIds.length === 0) return {};
-      
+
       const attemptsPromises = lessonIds.map(async (lessonId) => {
         try {
           const response = await apiClient.get(`/api/quiz-attempts/lesson/${lessonId}`);
@@ -92,6 +93,15 @@ export default function CoursesPage() {
     php: 'PHP',
     csharp: 'C#',
   };
+
+  useEffect(() => {
+    // Log course access activity
+    logActivity({
+      activityType: ActivityType.COURSE_ACCESSED,
+      action: 'Accessed courses page',
+      description: 'Student navigated to view available lessons'
+    });
+  }, []);
 
   const handleLockedClick = (sessionNumber: number) => {
     toast.error('Lesson Locked', {
@@ -143,7 +153,7 @@ export default function CoursesPage() {
                     const passedAttempts = attempts.filter(a => a.status === 'passed');
                     const totalAttempts = attempts.length;
                     const isQuizFailed = hasQuiz && totalAttempts >= 3 && passedAttempts.length === 0;
-                    
+
                     if (isUnlocked) {
                       return (
                         <Link key={lesson.id} href={`/dashboard/lessons/${lesson.id}`}>
@@ -182,11 +192,10 @@ export default function CoursesPage() {
                                 )}
                               </div>
                               {hasQuiz && totalAttempts > 0 && (
-                                <div className={`p-2 rounded-lg text-xs ${
-                                  isQuizFailed 
-                                    ? 'bg-red-500/10 border border-red-500/20 text-red-500' 
+                                <div className={`p-2 rounded-lg text-xs ${isQuizFailed
+                                    ? 'bg-red-500/10 border border-red-500/20 text-red-500'
                                     : 'bg-slate-800/50 text-slate-300'
-                                }`}>
+                                  }`}>
                                   {isQuizFailed ? (
                                     <div className="flex items-center gap-2">
                                       <XCircle className="h-3 w-3" />

@@ -13,6 +13,7 @@ import { apiClient } from '@/lib/api/client';
 import { GraduationCap, LogIn, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUserStatus, getUserEmail } from '@/lib/utils/auth';
+import { logActivity, ActivityType } from '@/lib/activity-logger';
 
 const loginSchema = z.object({
   studentId: z.string().min(1, 'Student ID is required'),
@@ -30,7 +31,7 @@ export default function LoginPage() {
     const token = localStorage.getItem('token');
     if (token) {
       const status = getUserStatus();
-      
+
       if (status === 'approved') {
         router.push('/dashboard');
       } else if (status === 'pending' || status === 'rejected') {
@@ -40,7 +41,7 @@ export default function LoginPage() {
         }
         router.push('/onboarding/pending');
       } else {
-        router.push('/dashboard');
+        localStorage.removeItem('token');
       }
     }
   }, [router]);
@@ -62,13 +63,20 @@ export default function LoginPage() {
         studentId: data.studentId.trim(),
         password: data.password,
       });
-      
+
       localStorage.setItem('token', response.data.token);
-      
+
       const userStatus = response.data.user?.status || 'pending';
       const userEmail = response.data.user?.email;
-      
+
       if (userStatus === 'approved') {
+        // Log login activity
+        await logActivity({
+          activityType: ActivityType.LOGIN,
+          action: 'Logged in to the system',
+          description: 'User successfully authenticated'
+        });
+
         toast.success('Login successful!', {
           description: 'Welcome back to your learning journey',
         });
@@ -94,7 +102,7 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       let errorMessage = 'Login failed. Please check your credentials.';
-      
+
       if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       } else if (err.response?.status === 404) {
@@ -104,7 +112,7 @@ export default function LoginPage() {
       } else if (err.message === 'Network Error') {
         errorMessage = 'Network error. Please check your connection.';
       }
-      
+
       setError(errorMessage);
       toast.error('Login failed', {
         description: errorMessage,

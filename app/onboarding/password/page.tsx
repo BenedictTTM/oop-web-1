@@ -45,6 +45,7 @@ export default function PasswordPage() {
   const password = watch('password', '');
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const saved = sessionStorage.getItem('onboardingData');
     if (!saved) {
       router.push('/onboarding/basic-info');
@@ -65,6 +66,7 @@ export default function PasswordPage() {
     setError(null);
 
     try {
+      if (typeof window === 'undefined') return;
       const saved = JSON.parse(sessionStorage.getItem('onboardingData') || '{}');
       const registrationData = {
         ...saved,
@@ -99,7 +101,7 @@ export default function PasswordPage() {
           totalSteps={4}
           stepLabels={['Basic Info', 'Contact', 'Password', 'Review']}
         />
-        
+
         <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl shadow-2xl">
           <CardHeader className="space-y-2 pb-6">
             <div className="flex items-center gap-3">
@@ -114,7 +116,7 @@ export default function PasswordPage() {
               </div>
             </div>
           </CardHeader>
-          
+
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {error && (
@@ -151,11 +153,10 @@ export default function PasswordPage() {
                       {[1, 2, 3].map((level) => (
                         <div
                           key={level}
-                          className={`flex-1 rounded-full transition-all ${
-                            level <= passwordStrength.strength
+                          className={`flex-1 rounded-full transition-all ${level <= passwordStrength.strength
                               ? passwordStrength.color
                               : 'bg-slate-700'
-                          }`}
+                            }`}
                         />
                       ))}
                     </div>

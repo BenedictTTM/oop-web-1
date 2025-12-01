@@ -23,7 +23,6 @@ const studentNavItems = [
   { href: '/dashboard/videos', label: 'Videos', icon: Video },
   { href: '/dashboard/quizzes', label: 'Quizzes', icon: FileText },
   { href: '/dashboard/progress', label: 'Progress', icon: TrendingUp },
-  { href: '/dashboard/activity', label: 'Activity Log', icon: Activity },
 ];
 
 interface SidebarContentProps {

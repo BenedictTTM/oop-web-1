@@ -17,9 +17,10 @@ export default function PendingApprovalPage() {
   const [timeElapsed, setTimeElapsed] = useState(0);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const token = localStorage.getItem('token');
     let pendingEmail = sessionStorage.getItem('pendingEmail');
-    
+
     if (!pendingEmail && token) {
       const emailFromToken = getUserEmail();
       if (emailFromToken) {
@@ -27,7 +28,7 @@ export default function PendingApprovalPage() {
         sessionStorage.setItem('pendingEmail', emailFromToken);
       }
     }
-    
+
     if (pendingEmail) {
       setEmail(pendingEmail);
     } else {
@@ -51,6 +52,7 @@ export default function PendingApprovalPage() {
   }, [router]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const token = localStorage.getItem('token');
     if (token) {
       const status = getUserStatus();
@@ -73,7 +75,7 @@ export default function PendingApprovalPage() {
         const encodedEmail = encodeURIComponent(email);
         const response = await apiClient.get(`/api/auth/status/${encodedEmail}`);
         const newStatus = response.data.status;
-        
+
         if (newStatus) {
           setStatus((prevStatus) => {
             if (prevStatus !== newStatus) {
