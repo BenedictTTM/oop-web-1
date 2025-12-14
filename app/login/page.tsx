@@ -127,7 +127,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 relative">
       <Card className="w-full max-w-md border-slate-800 bg-slate-900/80 backdrop-blur-xl shadow-2xl">
         <CardHeader className="text-center space-y-2">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
@@ -212,6 +212,9 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
+      <div className="absolute bottom-4 text-slate-500 text-sm">
+        Built by @Joe Acheampong
+      </div>
     </div>
   );
 }
