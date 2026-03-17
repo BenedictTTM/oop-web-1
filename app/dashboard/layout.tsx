@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { StudentSidebar } from '@/components/layout/student-sidebar';
-import { getUserStatus, getUserEmail } from '@/lib/utils/auth';
+import { getUserStatus, getUserEmail, isTokenExpired } from '@/lib/utils/auth';
 
 export default function DashboardLayout({
   children,
@@ -14,15 +14,16 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    
-    if (!token) {
+
+    if (!token || isTokenExpired()) {
+      localStorage.removeItem('token');
       router.push('/login');
       return;
     }
-    
+
     const status = getUserStatus();
     const email = getUserEmail();
-    
+
     if (status === 'pending' || status === 'rejected') {
       if (email) {
         sessionStorage.setItem('pendingEmail', email);
@@ -30,7 +31,7 @@ export default function DashboardLayout({
       router.push('/onboarding/pending');
       return;
     }
-    
+
     if (status !== 'approved') {
       router.push('/login');
     }

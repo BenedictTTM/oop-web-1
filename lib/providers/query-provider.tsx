@@ -12,6 +12,13 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 60 * 1000,
             refetchOnWindowFocus: false,
+            retry: (failureCount, error: any) => {
+              // Don't retry on auth errors — the interceptor handles the redirect
+              if (error?.response?.status === 401 || error?.response?.status === 403) {
+                return false;
+              }
+              return failureCount < 3;
+            },
           },
         },
       })
